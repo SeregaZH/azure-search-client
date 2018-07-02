@@ -15,7 +15,7 @@ const handleError = (err: any) => {
   throw err;
 };
 
-const handleResponse = <T>(resp: request.Response, timer: SearchTimer): AzureSearchResponse<T> => {
+const handleResponse = <T>(resp: request.Response): AzureSearchResponse<T> => {
   return {
     result: resp.body as T,
     properties: {
@@ -26,17 +26,16 @@ const handleResponse = <T>(resp: request.Response, timer: SearchTimer): AzureSea
       location: resp.header.location,
     },
     statusCode: resp.status,
-    timer,
   };
 };
 
-const handlePromise = <T>(req: request.SuperAgentRequest, timer: SearchTimer) => {
+const handlePromise = <T>(req: request.SuperAgentRequest) => {
   return req
-    .then((resp) => handleResponse<T>(resp, timer))
+    .then((resp) => handleResponse<T>(resp))
     .catch(handleError);
 };
 
-const handleCallback = <T>(req: request.SuperAgentRequest, callback: (err: Error, resp: AzureSearchResponse<T>) => void, timer: SearchTimer) => {
+const handleCallback = <T>(req: request.SuperAgentRequest, callback: (err: Error, resp: AzureSearchResponse<T>) => void) => {
   req.end((err, resp) => {
     let error: Error;
     let searchResp: AzureSearchResponse<T>;
@@ -47,7 +46,7 @@ const handleCallback = <T>(req: request.SuperAgentRequest, callback: (err: Error
         error = err;
       }
     } else {
-      searchResp = handleResponse(resp, timer);
+      searchResp = handleResponse(resp);
     }
     callback(error, searchResp);
   });
@@ -81,7 +80,9 @@ export class SearchRequester {
     const query = Object.assign({
       'api-version': options && options.version ? options.version : this.defaultVersion,
     }, req.query);
-    const timer: SearchTimer = { start: new Date(), response: process.hrtime(), end: process.hrtime() };
+
+    // todo process is not supported by browser, use browser timer to measure request's performances
+    // const timer: SearchTimer = { start: new Date(), response: process.hrtime(), end: process.hrtime() };
     const val = request(req.method, this.endpoint + req.path)
       .set(headers)
       .query(query)
@@ -90,24 +91,24 @@ export class SearchRequester {
       .timeout(options ? options.timeout : null)
       .parse(req.parser)
       .on('response', (resp) => {
-        timer.response = process.hrtime(timer.response);
+        // timer.response = process.hrtime(timer.response);
         this.events.emit('response', resp);
       })
       .on('error', (err) => {
-        timer.end = process.hrtime(timer.end);
+        // timer.end = process.hrtime(timer.end);
         if (this.events.listenerCount('error')) {
           this.events.emit('error', err);
         }
       })
       .on('end', (err) => {
-        timer.end = process.hrtime(timer.end);
+        // timer.end = process.hrtime(timer.end);
       });
     this.events.emit('request', { request: req, options });
 
     if (cb) {
-      handleCallback<T>(val, cb, timer);
+      handleCallback<T>(val, cb);
     } else {
-      return handlePromise<T>(val, timer);
+      return handlePromise<T>(val);
     }
   }
 

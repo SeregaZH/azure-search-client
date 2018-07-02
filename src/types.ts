@@ -25,7 +25,7 @@ export interface AzureSearchResponse<T> {
   result: T;
   properties: AzureSearchResponseProperties;
   statusCode: number;
-  timer: SearchTimer;
+  // timer: SearchTimer;
 }
 
 export interface AzureSearchResponseProperties {

@@ -3,8 +3,10 @@ import { ISearchIndex } from '../search-index';
 import { DocumentParseOptions, Query } from '../types/search';
 import { FacetBuilder } from './facet-builder';
 import { QueryFilter } from './query-filter';
+import {SearchResponse} from "../types";
 
-export type FieldName<TDocument> = Extract<keyof TDocument, string>;
+// export type Extract<T, U> = T extends U ? T : never;
+export type FieldName<TDocument> = keyof TDocument;
 
 /** Construct a query object to be used with Azure Search */
 export class QueryBuilder<TDocument = any> {
@@ -38,7 +40,7 @@ export class QueryBuilder<TDocument = any> {
     const items = Array.isArray(fieldOrExpression) ? fieldOrExpression : [ fieldOrExpression ];
     this.query.facets = this.query.facets || [];
     items.forEach((x) => {
-      this.query.facets.push(typeof x === 'string' ? x : x.toString());
+      this.query.facets.push(typeof x === 'string' ? x : x.toString() as any);
     });
     return this;
   }
@@ -174,7 +176,7 @@ export class QueryBuilder<TDocument = any> {
    * Execute the search query and return results (must pass an ISearchIndex in the QueryBuilder constructor)
    * @param options optional search options
    */
-  executeQuery(options?: SearchOptions & DocumentParseOptions) {
+  executeQuery(options?: SearchOptions & DocumentParseOptions): Promise<SearchResponse<TDocument>> {
     if (!this.index) {
       throw new Error('Cannot execute QueryBuilder without an index. Supply an ISearchIndex in the constructor');
     }
@@ -182,7 +184,7 @@ export class QueryBuilder<TDocument = any> {
     return this.index.search(this.query, options);
   }
 
-  private orderby(expression: string, dir: string) {
+  private orderby(expression: string, dir: string): QueryBuilder<TDocument> {
     this.query.orderby = this.query.orderby
       ? this.query.orderby + ','
       : '';
